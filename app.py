@@ -38,6 +38,8 @@ if 'board' not in st.session_state:
     st.session_state.board = chess.Board()
 if 'player_turn' not in st.session_state:
     st.session_state.player_turn = True  # True for White
+if 'move_count' not in st.session_state:
+    st.session_state.move_count = 0
 
 # Handle Four-Player Chess mode
 if game_mode == "Four-Player Chess (Experimental)":
@@ -92,6 +94,7 @@ if board.is_game_over():
     if st.button("Reset Game"):
         st.session_state.board = chess.Board()
         st.session_state.player_turn = True
+        st.session_state.move_count = 0
         st.rerun()
 else:
     # Enhanced visual turn indicator
@@ -118,7 +121,7 @@ else:
         st.markdown("#### 🎯 Enter Your Move")
         col1, col2 = st.columns([3, 1])
         with col1:
-            move_input = st.text_input("Move (e.g., e2e4):", key="move_input", label_visibility="collapsed", placeholder="Enter move (e.g., e2e4)")
+            move_input = st.text_input("Move (e.g., e2e4):", key=f"move_input_{st.session_state.move_count}", label_visibility="collapsed", placeholder="Enter move (e.g., e2e4)")
         with col2:
             submit_move = st.button("➤ Move", use_container_width=True)
         
@@ -129,6 +132,7 @@ else:
                     board.push(move)
                     st.session_state.board = board
                     st.session_state.player_turn = not st.session_state.player_turn
+                    st.session_state.move_count += 1
                     st.rerun()
                 else:
                     st.error("❌ Illegal move! Please try again.")
@@ -157,6 +161,7 @@ with col2:
     if st.button("🔄 Reset Game", use_container_width=True):
         st.session_state.board = chess.Board()
         st.session_state.player_turn = True
+        st.session_state.move_count = 0
         st.rerun()
 
 st.markdown("---")
