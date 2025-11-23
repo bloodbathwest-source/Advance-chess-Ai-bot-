@@ -18,18 +18,64 @@ def get_stockfish():
 
 # Function to display the board
 def display_board(board):
-    svg = chess.svg.board(board=board, size=400)
-    st.write(svg, unsafe_allow_html=True)
+    # Responsive board size based on container
+    svg = chess.svg.board(board=board, size=500)
+    st.markdown(
+        f"""
+        <div style="display: flex; justify-content: center; align-items: center; padding: 10px;">
+            {svg}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # Main app
 st.title("Chess Game on Streamlit")
 
-game_mode = st.selectbox("Select Game Mode", ["Human vs Human", "Human vs AI (Extremely Difficult)"])
+game_mode = st.selectbox("Select Game Mode", ["Human vs Human", "Human vs AI (Extremely Difficult)", "Four-Player Chess (Experimental)"])
 
 if 'board' not in st.session_state:
     st.session_state.board = chess.Board()
 if 'player_turn' not in st.session_state:
     st.session_state.player_turn = True  # True for White
+
+# Handle Four-Player Chess mode
+if game_mode == "Four-Player Chess (Experimental)":
+    st.warning("⚠️ **Experimental Feature**: Four-Player Chess is a placeholder for future development. Full functionality coming soon!")
+    
+    st.subheader("Four-Player Chess Board (Conceptual)")
+    
+    # Create a pseudo-interface for four-player chess
+    cols = st.columns(4)
+    with cols[0]:
+        st.markdown("### 👤 Player 1 (White)")
+        st.info("Bottom position")
+    with cols[1]:
+        st.markdown("### 👤 Player 2 (Black)")
+        st.info("Top position")
+    with cols[2]:
+        st.markdown("### 👤 Player 3 (Red)")
+        st.info("Left position")
+    with cols[3]:
+        st.markdown("### 👤 Player 4 (Blue)")
+        st.info("Right position")
+    
+    st.markdown("---")
+    st.markdown("#### 🎮 Four-Player Chess Rules (Preview)")
+    st.markdown("""
+    - **Turn Order**: White → Black → Red → Blue
+    - **Board Layout**: Extended 14x14 board with four starting positions
+    - **Objective**: Last player with their king remaining wins
+    - **Alliances**: Players can form temporary alliances
+    """)
+    
+    # Display a placeholder board visualization
+    st.image("https://via.placeholder.com/600x600/2C3E50/ECF0F1?text=Four-Player+Chess+Board+Coming+Soon", 
+             caption="Four-Player Chess Board (Placeholder)", use_container_width=True)
+    
+    st.info("💡 **Tip**: Switch to 'Human vs Human' or 'Human vs AI' modes to play regular chess!")
+    
+    st.stop()  # Stop execution for four-player mode
 
 board = st.session_state.board
 display_board(board)
@@ -38,20 +84,23 @@ if board.is_game_over():
     st.write("Game Over!")
     result = board.result()
     if result == "1-0":
-        st.write("White wins!")
+        st.success("🏆 White wins!")
     elif result == "0-1":
-        st.write("Black wins!")
+        st.success("🏆 Black wins!")
     else:
-        st.write("It's a draw!")
+        st.info("🤝 It's a draw!")
     if st.button("Reset Game"):
         st.session_state.board = chess.Board()
         st.session_state.player_turn = True
         st.rerun()
 else:
+    # Enhanced visual turn indicator
     if board.turn == chess.WHITE:
-        st.write("White's turn")
+        st.markdown("### 🔵 **White's Turn**")
+        st.progress(1.0, text="White to move")
     else:
-        st.write("Black's turn")
+        st.markdown("### ⚫ **Black's Turn**")
+        st.progress(1.0, text="Black to move")
 
     if game_mode == "Human vs AI (Extremely Difficult)" and board.turn == chess.BLACK:
         stockfish = get_stockfish()
@@ -66,8 +115,14 @@ else:
             else:
                 st.error("Invalid AI move!")
     else:
-        move_input = st.text_input("Enter your move (e.g., e2e4):")
-        if move_input:
+        st.markdown("#### 🎯 Enter Your Move")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            move_input = st.text_input("Move (e.g., e2e4):", key="move_input", label_visibility="collapsed", placeholder="Enter move (e.g., e2e4)")
+        with col2:
+            submit_move = st.button("➤ Move", use_container_width=True)
+        
+        if move_input and (submit_move or move_input):
             try:
                 move = chess.Move.from_uci(move_input)
                 if move in board.legal_moves:
@@ -76,17 +131,45 @@ else:
                     st.session_state.player_turn = not st.session_state.player_turn
                     st.rerun()
                 else:
-                    st.error("Illegal move!")
+                    st.error("❌ Illegal move! Please try again.")
             except ValueError:
-                st.error("Invalid move format!")
+                st.error("❌ Invalid move format! Use format like 'e2e4'.")
+        
+        # Show legal moves hint
+        with st.expander("💡 Show Legal Moves"):
+            legal_moves_list = [str(move) for move in board.legal_moves]
+            st.write(", ".join(legal_moves_list[:20]))  # Show first 20 moves
+            if len(legal_moves_list) > 20:
+                st.write(f"... and {len(legal_moves_list) - 20} more moves")
 
-if st.button("Undo Last Move"):
-    if board.move_stack:
-        board.pop()
-        st.session_state.board = board
-        st.session_state.player_turn = not st.session_state.player_turn
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("↶ Undo Last Move", use_container_width=True):
+        if board.move_stack:
+            board.pop()
+            st.session_state.board = board
+            st.session_state.player_turn = not st.session_state.player_turn
+            st.rerun()
+        else:
+            st.warning("No moves to undo!")
+
+with col2:
+    if st.button("🔄 Reset Game", use_container_width=True):
+        st.session_state.board = chess.Board()
+        st.session_state.player_turn = True
         st.rerun()
 
-st.subheader("Move History")
+st.markdown("---")
+st.subheader("📜 Move History")
 moves = [str(move) for move in board.move_stack]
-st.write(moves)
+if moves:
+    # Display moves in a more readable format (pairs for White and Black)
+    move_pairs = []
+    for i in range(0, len(moves), 2):
+        if i + 1 < len(moves):
+            move_pairs.append(f"{i//2 + 1}. {moves[i]} {moves[i+1]}")
+        else:
+            move_pairs.append(f"{i//2 + 1}. {moves[i]}")
+    st.text("\n".join(move_pairs))
+else:
+    st.info("No moves yet. Start playing!")
