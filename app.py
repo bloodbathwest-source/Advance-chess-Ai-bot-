@@ -18,7 +18,7 @@ def get_stockfish():
     try:
         from stockfish import Stockfish
         return Stockfish(path=STOCKFISH_PATH, depth=18, parameters={"Threads": 4, "Hash": 2048})
-    except:
+    except (ImportError, FileNotFoundError, Exception):
         return None
 
 # Function to get legal moves for a square
@@ -217,6 +217,8 @@ if 'last_move' not in st.session_state:
     st.session_state.last_move = None
 if 'move_history' not in st.session_state:
     st.session_state.move_history = []
+if 'last_processed_move' not in st.session_state:
+    st.session_state.last_processed_move = ''
 
 # Sidebar for game controls
 with st.sidebar:
@@ -247,9 +249,14 @@ with st.sidebar:
     if st.session_state.move_history:
         for i, move in enumerate(st.session_state.move_history, 1):
             if i % 2 == 1:
-                st.text(f"{(i+1)//2}. {move}", end=" ")
+                move_num = f"{(i+1)//2}. {move}"
+                if i < len(st.session_state.move_history):
+                    move_num += f" {st.session_state.move_history[i]}"
+                    st.text(move_num)
+            elif i % 2 == 0 and i > 1:
+                continue
             else:
-                st.text(f"{move}")
+                st.text(move)
     else:
         st.info("No moves yet")
     
