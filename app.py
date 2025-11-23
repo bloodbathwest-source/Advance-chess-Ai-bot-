@@ -72,8 +72,25 @@ if game_mode == "Four-Player Chess (Experimental)":
     """)
     
     # Display a placeholder board visualization
-    st.image("https://via.placeholder.com/600x600/2C3E50/ECF0F1?text=Four-Player+Chess+Board+Coming+Soon", 
-             caption="Four-Player Chess Board (Placeholder)", use_container_width=True)
+    st.markdown("""
+    <div style="
+        width: 100%; 
+        height: 400px; 
+        background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 10px;
+        color: #ECF0F1;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        padding: 20px;
+        margin: 20px 0;
+    ">
+        Four-Player Chess Board<br/>Coming Soon
+    </div>
+    """, unsafe_allow_html=True)
     
     st.info("💡 **Tip**: Switch to 'Human vs Human' or 'Human vs AI' modes to play regular chess!")
     
@@ -125,7 +142,7 @@ else:
         with col2:
             submit_move = st.button("➤ Move", use_container_width=True)
         
-        if move_input and (submit_move or move_input):
+        if move_input:
             try:
                 move = chess.Move.from_uci(move_input)
                 if move in board.legal_moves:
