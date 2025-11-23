@@ -245,11 +245,9 @@ class TestMoveValidation(unittest.TestCase):
     def test_validate_illegal_move_wrong_turn(self):
         """Test that moves by wrong color are rejected"""
         # Try to move black piece when it's white's turn
-        try:
-            move = chess.Move.from_uci("e7e5")
-            self.assertNotIn(move, self.board.legal_moves)
-        except:
-            pass  # This is expected
+        # Black's e7e5 is not in white's legal moves
+        move = chess.Move.from_uci("e7e5")
+        self.assertNotIn(move, self.board.legal_moves)
     
     def test_validate_illegal_move_format(self):
         """Test that invalid move formats are rejected"""

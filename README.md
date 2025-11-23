@@ -5,13 +5,14 @@ An interactive, visually appealing chess game built with Streamlit featuring dra
 ## ✨ Features
 
 ### 🎮 Interactive User Interface
-- **Drag-and-Drop Gameplay**: Move pieces naturally by dragging them across the board
+- **Visual Chess Board**: High-quality SVG rendering of the chessboard
 - **Visual Indicators**: 
   - Last move highlighting to track game progression
-  - Piece highlighting on hover for better UX
+  - Check highlighting when king is in check
+  - Legal move visualization (green squares)
   - Responsive design that scales to different screen sizes
-- **Beautiful Design**: Clean, modern interface with chess piece graphics
-- **Real-time Updates**: Board updates instantly after each move
+- **Beautiful Design**: Clean, modern interface with professional chess piece graphics
+- **Real-time Updates**: Board updates instantly after each valid move
 
 ### ♟️ Chess Functionality
 - **Real-time Move Validation**: All moves are validated against chess rules instantly
@@ -77,12 +78,13 @@ The application will open in your default web browser at `http://localhost:8501`
 ### Playing the Game
 
 1. **Making Moves**:
-   - **Drag and Drop**: Click and drag a piece to move it
-   - **Manual Input**: Use the "Manual Move Input" expander for text-based moves (e.g., `e2e4`)
+   - **Enter moves**: Type the from square (e.g., "e2") and to square (e.g., "e4")
+   - **Click Make Move**: Click the button to execute your move
+   - **Pawn Promotion**: Select the piece type from the dropdown before promoting
 
 2. **Move Notation**:
-   - Standard UCI format: source square + destination square
-   - Examples: `e2e4`, `b1c3`, `e7e8q` (pawn promotion to queen)
+   - Squares are identified by column (a-h) and row (1-8)
+   - Examples: e2, e4, a7, h8
 
 3. **Game Controls** (in sidebar):
    - **Reset Game**: Start a new game
@@ -90,9 +92,9 @@ The application will open in your default web browser at `http://localhost:8501`
    - **Game Mode**: Switch between Human vs Human or Human vs AI
 
 4. **Visual Feedback**:
-   - Hover over pieces to highlight them
-   - Last move is highlighted on the board
-   - Check warnings appear when applicable
+   - Last move is highlighted on the board (yellow squares)
+   - Check warnings appear when king is in check (red highlighting)
+   - Legal moves are shown in green
    - Error messages display for illegal moves
 
 ### Understanding the Interface
@@ -164,11 +166,13 @@ The test suite includes:
 ## 🏗️ Architecture
 
 ### Frontend Integration
-The application uses **Chessboard.js** integrated through Streamlit's `components.html()` function:
-- jQuery and Chessboard.js are loaded from CDN
-- Interactive board with drag-and-drop functionality
-- Custom styling for move highlighting and responsive design
-- Communication with Python backend through Streamlit's component API
+The application uses **python-chess's SVG rendering** with enhanced visual indicators:
+- High-quality SVG chess board rendering
+- Last move highlighting with yellow squares
+- Check highlighting with red indicators
+- Legal move visualization with green squares
+- Responsive design that scales appropriately
+- Clean, professional appearance
 
 ### Backend Logic
 - Python chess library handles all game logic
@@ -180,10 +184,11 @@ The application uses **Chessboard.js** integrated through Streamlit's `component
 ```
 app.py
 ├── Stockfish Integration (optional)
-├── Interactive Board Display (Chessboard.js)
-│   ├── Drag and Drop Handlers
-│   ├── Move Validation
-│   └── Visual Feedback
+├── Interactive Board Display (SVG-based)
+│   ├── chess.svg for rendering
+│   ├── Last Move Highlighting
+│   ├── Check Detection Visual
+│   └── Legal Move Indicators
 ├── Game Logic (python-chess)
 │   ├── Move Validation
 │   ├── Game State Management
@@ -191,6 +196,7 @@ app.py
 └── UI Components (Streamlit)
     ├── Sidebar Controls
     ├── Game Status Display
+    ├── Move Input Interface
     └── Move History
 ```
 
@@ -204,8 +210,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Chessboard.js](https://chessboardjs.com/) - Interactive chessboard component
-- [python-chess](https://python-chess.readthedocs.io/) - Chess logic library
+- [python-chess](https://python-chess.readthedocs.io/) - Chess logic library and SVG rendering
 - [Stockfish](https://stockfishchess.org/) - Chess engine
 - [Streamlit](https://streamlit.io/) - Web application framework
 

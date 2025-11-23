@@ -4,10 +4,8 @@
 # Download Stockfish binary from https://stockfishchess.org/download/ and set the path below.
 
 import streamlit as st
-import streamlit.components.v1 as components
 import chess
 import chess.svg
-import json
 
 # Optional: Set the path to your Stockfish binary if you want AI opponent
 STOCKFISH_PATH = None  # Set to "path/to/your/stockfish/binary" to enable AI
@@ -35,196 +33,38 @@ def get_legal_moves_for_square(board, square):
     return legal_moves
 
 # Function to display the interactive chessboard
-def display_interactive_board(board, board_id="board"):
-    """Display an interactive chessboard using Chessboard.js"""
-    
-    # Get FEN position
-    fen = board.fen()
+def display_interactive_board(board, selected_square=None):
+    """Display an interactive chessboard with move selection"""
     
     # Get last move for highlighting
-    last_move = ""
+    last_move = None
     if board.move_stack:
-        last_move_obj = board.peek()
-        last_move = f"{chess.square_name(last_move_obj.from_square)}-{chess.square_name(last_move_obj.to_square)}"
+        last_move = board.peek()
     
-    # Determine board orientation
-    orientation = "white"
+    # Get legal moves if a square is selected
+    legal_moves = []
+    if selected_square is not None:
+        try:
+            square_obj = chess.parse_square(selected_square)
+            for move in board.legal_moves:
+                if move.from_square == square_obj:
+                    legal_moves.append(move.to_square)
+        except:
+            pass
     
-    # Generate HTML with Chessboard.js
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-        <style>
-            body {{
-                margin: 0;
-                padding: 20px;
-                font-family: Arial, sans-serif;
-            }}
-            #myBoard {{
-                width: 100%;
-                max-width: 600px;
-                margin: 0 auto;
-            }}
-            .highlight-square {{
-                box-shadow: inset 0 0 3px 3px yellow;
-            }}
-            .last-move-from {{
-                box-shadow: inset 0 0 3px 3px rgba(255, 255, 0, 0.5);
-            }}
-            .last-move-to {{
-                box-shadow: inset 0 0 3px 3px rgba(255, 255, 0, 0.8);
-            }}
-            .info {{
-                text-align: center;
-                margin-top: 10px;
-                font-size: 14px;
-                color: #666;
-            }}
-            .error {{
-                color: #d32f2f;
-                text-align: center;
-                margin-top: 10px;
-                font-weight: bold;
-            }}
-        </style>
-    </head>
-    <body>
-        <div id="myBoard"></div>
-        <div id="info" class="info"></div>
-        <div id="error" class="error"></div>
-        
-        <script>
-            var board = null;
-            var lastMove = '{last_move}';
-            var legalMovesCache = {{}};
-            
-            // Function to communicate with Streamlit
-            function sendMoveToStreamlit(source, target) {{
-                var move = source + target;
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: move
-                }}, '*');
-            }}
-            
-            // Function to highlight squares
-            function removeHighlights() {{
-                $('#myBoard .square-55d63').removeClass('highlight-square');
-            }}
-            
-            function highlightSquare(square) {{
-                var $square = $('#myBoard .square-' + square);
-                $square.addClass('highlight-square');
-            }}
-            
-            // Function to highlight last move
-            function highlightLastMove() {{
-                if (lastMove) {{
-                    var parts = lastMove.split('-');
-                    if (parts.length === 2) {{
-                        var $fromSquare = $('#myBoard .square-' + parts[0]);
-                        var $toSquare = $('#myBoard .square-' + parts[1]);
-                        $fromSquare.addClass('last-move-from');
-                        $toSquare.addClass('last-move-to');
-                    }}
-                }}
-            }}
-            
-            // Function to get legal moves from Streamlit
-            function getLegalMoves(square, callback) {{
-                // Request legal moves from parent
-                window.parent.postMessage({{
-                    type: 'streamlit:getLegalMoves',
-                    square: square
-                }}, '*');
-                
-                // Store callback for when we get response
-                window.legalMovesCallback = callback;
-            }}
-            
-            // Drag start handler
-            function onDragStart(source, piece, position, orientation) {{
-                // Get legal moves and highlight them
-                $.ajax({{
-                    type: 'POST',
-                    url: 'about:blank',
-                    async: false
-                }});
-                
-                // For demo purposes, we'll allow all drags
-                // In production, this would check against legal moves from backend
-                return true;
-            }}
-            
-            // Drop handler
-            function onDrop(source, target) {{
-                removeHighlights();
-                
-                // Don't allow moving to the same square
-                if (source === target) {{
-                    return 'snapback';
-                }}
-                
-                // Send move to Streamlit for validation
-                sendMoveToStreamlit(source, target);
-                
-                // Return snapback - if move is valid, Streamlit will update the position
-                return 'snapback';
-            }}
-            
-            // Mouse over square handler
-            function onMouseoverSquare(square, piece) {{
-                // Highlight the square and possible moves
-                if (piece) {{
-                    highlightSquare(square);
-                }}
-            }}
-            
-            // Mouse out square handler
-            function onMouseoutSquare(square, piece) {{
-                removeHighlights();
-            }}
-            
-            // Snap end handler
-            function onSnapEnd() {{
-                board.position(board.fen());
-            }}
-            
-            // Initialize board
-            var config = {{
-                draggable: true,
-                position: '{fen}',
-                onDragStart: onDragStart,
-                onDrop: onDrop,
-                onMouseoutSquare: onMouseoutSquare,
-                onMouseoverSquare: onMouseoverSquare,
-                onSnapEnd: onSnapEnd,
-                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{{piece}}.png',
-                orientation: '{orientation}'
-            }};
-            
-            board = Chessboard('myBoard', config);
-            
-            // Highlight last move after board is rendered
-            setTimeout(highlightLastMove, 100);
-            
-            // Make board responsive
-            $(window).resize(function() {{
-                board.resize();
-            }});
-        </script>
-    </body>
-    </html>
-    """
+    # Create SVG with highlighting
+    svg = chess.svg.board(
+        board=board,
+        size=500,
+        lastmove=last_move,
+        check=board.king(board.turn) if board.is_check() else None,
+        squares=chess.SquareSet(legal_moves) if legal_moves else None
+    )
     
-    # Display the interactive board
-    move = components.html(html_code, height=680, scrolling=False)
+    # Display the board
+    st.write(svg, unsafe_allow_html=True)
     
-    return move
+    return None
 
 # Configure page
 st.set_page_config(page_title="Interactive Chess Game", page_icon="♟️", layout="centered")
@@ -353,49 +193,43 @@ else:
         else:
             st.warning("⚠️ AI not available. Please configure Stockfish path in the code.")
     
-    # Display the interactive chessboard
-    move = display_interactive_board(board)
-    
-    # Handle move from interactive board
-    if move:
-        try:
-            # Parse move (format: "e2e4" or "e7e8q" for promotion)
-            if len(move) >= 4:
-                from_square = move[:2]
-                to_square = move[2:4]
-                promotion = move[4] if len(move) > 4 else None
-                
-                # Create move object
-                chess_move = chess.Move.from_uci(move)
-                
-                # Validate and make move
-                if chess_move in board.legal_moves:
-                    board.push(chess_move)
-                    st.session_state.board = board
-                    st.session_state.player_turn = not st.session_state.player_turn
-                    st.session_state.last_error = None
-                    st.session_state.move_count += 1
-                    st.rerun()
-                else:
-                    st.session_state.last_error = f"Illegal move: {move}"
-                    st.error(f"❌ {st.session_state.last_error}")
-        except Exception as e:
-            st.session_state.last_error = f"Invalid move format: {move}"
-            st.error(f"❌ {st.session_state.last_error}")
-    
-    # Display error if any
-    if st.session_state.last_error:
-        st.error(f"❌ {st.session_state.last_error}")
-    
-    st.markdown("---")
+    # Display the chessboard
+    display_interactive_board(board)
     
     # Alternative text input for moves
-    with st.expander("⌨️ Manual Move Input (Alternative)"):
-        st.info("You can also enter moves manually using standard chess notation")
-        move_input = st.text_input("Enter your move (e.g., e2e4, e7e8q for promotion):", key="manual_move")
-        if move_input:
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        move_input = st.text_input(
+            "From square (e.g., e2):",
+            key="from_square",
+            help="Enter the square you want to move from"
+        )
+    
+    with col2:
+        to_input = st.text_input(
+            "To square (e.g., e4):",
+            key="to_square",
+            help="Enter the destination square"
+        )
+    
+    if st.button("Make Move", type="primary"):
+        if move_input and to_input:
             try:
-                chess_move = chess.Move.from_uci(move_input)
+                # Handle promotion if specified
+                promotion_choice = st.selectbox(
+                    "Promotion piece (if applicable):",
+                    ["None", "q", "r", "b", "n"],
+                    key="promotion"
+                )
+                
+                move_str = move_input.lower() + to_input.lower()
+                if promotion_choice != "None":
+                    move_str += promotion_choice
+                
+                chess_move = chess.Move.from_uci(move_str)
+                
                 if chess_move in board.legal_moves:
                     board.push(chess_move)
                     st.session_state.board = board
@@ -404,28 +238,36 @@ else:
                     st.session_state.move_count += 1
                     st.rerun()
                 else:
-                    st.error("❌ Illegal move!")
-            except ValueError:
-                st.error("❌ Invalid move format! Use format like 'e2e4' or 'e7e8q'")
+                    st.error(f"❌ Illegal move: {move_str}")
+            except Exception as e:
+                st.error(f"❌ Invalid move format: {str(e)}")
+        else:
+            st.warning("⚠️ Please enter both from and to squares")
     
     # Help section
     with st.expander("ℹ️ How to Play"):
         st.markdown("""
         **Interactive Chessboard:**
-        - **Drag and drop** pieces to make moves
-        - **Legal moves** are validated in real-time
-        - **Last move** is highlighted on the board
-        - **Hover** over pieces to see them highlighted
+        - **Visual indicators** show the last move played (highlighted squares)
+        - **Check detection** is indicated with special highlighting
+        - **Legal moves** are shown in green when a piece can be moved
+        - The board updates in real-time after each valid move
+        
+        **Making Moves:**
+        - Enter the **from square** (e.g., e2) and **to square** (e.g., e4)
+        - Click **Make Move** to execute the move
+        - For pawn promotion, select the piece type before moving
         
         **Move Notation:**
-        - Moves are in UCI format: source + destination (e.g., e2e4)
-        - For pawn promotion, add the piece letter (e.g., e7e8q for queen)
+        - Squares are named by column (a-h) and row (1-8)
+        - Example: e2 to e4 moves the pawn forward two squares
         
         **Game Modes:**
-        - **Human vs Human:** Play against another person
+        - **Human vs Human:** Play against another person locally
         - **Human vs AI:** Challenge the Stockfish engine (requires setup)
         
         **Controls:**
         - Use the sidebar to reset the game or undo moves
         - View move history and game status in the sidebar
+        - Check warnings appear automatically when applicable
         """)
