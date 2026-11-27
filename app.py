@@ -1,20 +1,36 @@
 # Streamlit Chess Game with Extremely Difficult AI (using Stockfish)
 # To run: streamlit run app.py
-# Requirements: pip install streamlit chess stockfish
-# Download Stockfish binary from https://stockfishchess.org/download/ and set the path below.
+# Requirements: pip install -r requirements.txt
+# Stockfish binary: download from https://stockfishchess.org/download/ and either
+# add it to your PATH or set the STOCKFISH_PATH environment variable to its location.
+
+import os
+import shutil
 
 import streamlit as st
 import chess
 import chess.svg
 from stockfish import Stockfish
 
-# Set the path to your Stockfish binary
-STOCKFISH_PATH = "path/to/your/stockfish/binary"  # Update this!
+# Resolve the Stockfish binary: the STOCKFISH_PATH environment variable wins,
+# otherwise look for a "stockfish" binary on the system PATH.
+def resolve_stockfish_path():
+    env_path = os.environ.get("STOCKFISH_PATH")
+    if env_path and os.path.isfile(env_path):
+        return env_path
+    return shutil.which("stockfish")
 
-# Initialize Stockfish
+# Initialize Stockfish. Returns None (instead of crashing) when no usable
+# binary is available, so the UI can show setup guidance and degrade gracefully.
 @st.cache_resource
 def get_stockfish():
-    return Stockfish(path=STOCKFISH_PATH, depth=18, parameters={"Threads": 4, "Hash": 2048})  # High depth for difficulty
+    path = resolve_stockfish_path()
+    if not path:
+        return None
+    try:
+        return Stockfish(path=path, depth=18, parameters={"Threads": 4, "Hash": 2048})  # High depth for difficulty
+    except Exception:
+        return None
 
 # Function to display the board
 def display_board(board):
@@ -122,19 +138,29 @@ else:
         st.markdown("### ⚫ **Black's Turn**")
         st.progress(1.0, text="Black to move")
 
-    if game_mode == "Human vs AI (Extremely Difficult)" and board.turn == chess.BLACK:
+    ai_turn = game_mode == "Human vs AI (Extremely Difficult)" and board.turn == chess.BLACK
+    if ai_turn:
         stockfish = get_stockfish()
-        stockfish.set_fen_position(board.fen())
-        best_move = stockfish.get_best_move()
-        if best_move:
-            move = chess.Move.from_uci(best_move)
-            if move in board.legal_moves:
-                board.push(move)
-                st.session_state.board = board
-                st.rerun()
-            else:
-                st.error("Invalid AI move!")
-    else:
+        if stockfish is None:
+            st.error(
+                "⚠️ **Stockfish engine not found — the AI can't move.** "
+                "Download Stockfish from https://stockfishchess.org/download/, then either add the "
+                "binary to your PATH or set the `STOCKFISH_PATH` environment variable to its location "
+                "and restart the app. You can play Black's move manually below in the meantime."
+            )
+            ai_turn = False  # Degrade gracefully: let the human play Black's move
+        else:
+            stockfish.set_fen_position(board.fen())
+            best_move = stockfish.get_best_move()
+            if best_move:
+                move = chess.Move.from_uci(best_move)
+                if move in board.legal_moves:
+                    board.push(move)
+                    st.session_state.board = board
+                    st.rerun()
+                else:
+                    st.error("Invalid AI move!")
+    if not ai_turn:
         st.markdown("#### 🎯 Enter Your Move")
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -142,7 +168,7 @@ else:
         with col2:
             submit_move = st.button("➤ Move", use_container_width=True)
         
-        if move_input:
+        if submit_move and move_input:
             try:
                 move = chess.Move.from_uci(move_input)
                 if move in board.legal_moves:
@@ -167,9 +193,13 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("↶ Undo Last Move", use_container_width=True):
         if board.move_stack:
-            board.pop()
+            # In AI mode, take back the AI's reply AND the player's own move,
+            # so it is the player's turn again with their move undone.
+            pops = 2 if game_mode == "Human vs AI (Extremely Difficult)" else 1
+            for _ in range(min(pops, len(board.move_stack))):
+                board.pop()
             st.session_state.board = board
-            st.session_state.player_turn = not st.session_state.player_turn
+            st.session_state.player_turn = board.turn == chess.WHITE
             st.rerun()
         else:
             st.warning("No moves to undo!")
